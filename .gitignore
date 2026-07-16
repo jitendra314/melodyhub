@@ -1,0 +1,28 @@
+# Laravel
+backend/vendor
+backend/node_modules
+backend/storage/*.key
+backend/.env
+
+# React
+web/node_modules
+web/dist
+
+# React Native
+mobile/node_modules
+mobile/.expo
+
+# Python
+ai-service/venv
+ai-service/__pycache__
+
+# Docker
+docker/volumes
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
