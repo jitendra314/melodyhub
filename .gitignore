@@ -18,6 +18,7 @@ ai-service/__pycache__
 
 # Docker
 docker/volumes
+.env.docker
 
 # IDE
 .vscode
