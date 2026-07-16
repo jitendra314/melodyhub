@@ -1,23 +1,25 @@
-version: "3.9"
-
 services:
   app:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
     container_name: melodyhub_app
+    restart: unless-stopped
     working_dir: /var/www
     volumes:
       - ./backend:/var/www
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - melodyhub
 
   nginx:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     container_name: melodyhub_nginx
+    restart: unless-stopped
     ports:
       - "8000:80"
     volumes:
@@ -33,26 +35,64 @@ services:
     container_name: melodyhub_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: melodyhub
-      POSTGRES_USER: melodyhub
-      POSTGRES_PASSWORD: melodyhub
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - melodyhub
 
   redis:
     image: redis:7-alpine
     container_name: melodyhub_redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - melodyhub
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: melodyhub_mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - melodyhub
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: melodyhub_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     networks:
       - melodyhub
 
 volumes:
   postgres_data:
+  redis_data:
+  pgadmin_data:
 
 networks:
   melodyhub:
+    driver: bridge
