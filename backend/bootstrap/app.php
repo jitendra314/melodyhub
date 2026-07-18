@@ -1,19 +1,191 @@
 <?php
 
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use App\Exceptions\EmailAlreadyVerifiedException;
+use App\Exceptions\InvalidOtpException;
+use App\Exceptions\OtpExpiredException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
-    })->create();
+
+        /**
+         * Validation Exceptions
+         */
+        $exceptions->render(function (
+            ValidationException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors'  => $e->errors(),
+            ], 422);
+        });
+
+        /**
+         * Invalid OTP Exception
+         */
+        $exceptions->render(function (
+            InvalidOtpException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors'  => null,
+            ], 422);
+        });
+
+        /**
+         * OTP Expired Exception
+         */
+        $exceptions->render(function (
+            OtpExpiredException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors'  => null,
+            ], 422);
+        });
+
+        /**
+         * Email Already Verified Exception
+         */
+        $exceptions->render(function (
+            EmailAlreadyVerifiedException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors'  => null,
+            ], 409);
+        });
+
+        /**
+         * Authentication Exceptions
+         */
+        $exceptions->render(function (
+            AuthenticationException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Authentication required.',
+                'errors'  => null,
+            ], 401);
+        });
+
+        /**
+         * Model Not Found Exceptions
+         */
+        $exceptions->render(function (
+            ModelNotFoundException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Resource not found.',
+                'errors'  => null,
+            ], 404);
+        });
+
+        /**
+         * HTTP Exceptions
+         */
+        $exceptions->render(function (
+            HttpException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            $message = match ($e->getStatusCode()) {
+                400 => 'Bad request.',
+                401 => 'Authentication required.',
+                403 => 'Forbidden.',
+                404 => 'Resource not found.',
+                405 => 'Method not allowed.',
+                419 => 'Page expired.',
+                422 => 'Validation failed.',
+                429 => 'Too many requests.',
+                default => 'HTTP error.',
+            };
+
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+                'errors'  => null,
+            ], $e->getStatusCode());
+        });
+
+        /**
+         * Unhandled Exceptions
+         */
+        $exceptions->render(function (
+            \Throwable $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => app()->isProduction()
+                    ? 'Something went wrong. Please try again later.'
+                    : $e->getMessage(),
+                'errors' => app()->isLocal()
+                    ? [
+                        'exception' => class_basename($e),
+                        'file'      => basename($e->getFile()),
+                        'line'      => $e->getLine(),
+                    ]
+                    : null,
+            ], 500);
+        });
+    })
+    ->create();
