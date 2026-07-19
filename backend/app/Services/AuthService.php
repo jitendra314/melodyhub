@@ -2,60 +2,48 @@
 
 namespace App\Services;
 
-use App\Mail\VerifyEmailOtpMail;
 use App\Exceptions\EmailAlreadyVerifiedException;
-use App\Exceptions\InvalidOtpException;
-use App\Exceptions\OtpExpiredException;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 
 class AuthService
 {
+    public function __construct(
+        private readonly OtpService $otpService
+    ) {}
+
+    /**
+     * Register a new user.
+     */
     public function register(array $data): User
     {
         return DB::transaction(function () use ($data) {
 
-            $otp = random_int(100000, 999999);
-
             $user = User::create([
-                'name'                              => $data['name'],
-                'email'                             => $data['email'],
-                'password'                          => $data['password'],
-                'email_verification_otp'            => $otp,
-                'email_verification_otp_expires_at' => now()->addMinutes(10),
+                'name'     => $data['name'],
+                'email'    => $data['email'],
+                'password' => $data['password'],
             ]);
 
-            $this->sendVerificationOtp($user);
+            $this->otpService->generateAndSend($user);
 
-            return $user;
+            return $user->fresh();
         });
     }
 
+    /**
+     * Verify user's email using OTP.
+     */
     public function verifyEmail(array $data): void
     {
         DB::transaction(function () use ($data) {
 
-            $user = User::where('email', $data['email'])
-                ->firstOrFail();
+            $user = $this->getUnverifiedUser($data['email']);
 
-            if ($user->email_verified_at !== null) {
-                throw new EmailAlreadyVerifiedException();
-            }
-
-            if (! hash_equals(
-                $user->email_verification_otp,
+            $this->otpService->validate(
+                $user,
                 $data['otp']
-            )) {
-                throw new InvalidOtpException();
-            }
-
-            if (
-                $user->email_verification_otp_expires_at === null ||
-                now()->greaterThan($user->email_verification_otp_expires_at)
-            ) {
-                throw new OtpExpiredException();
-            }
+            );
 
             $user->update([
                 'email_verified_at' => now(),
@@ -66,14 +54,34 @@ class AuthService
     }
 
     /**
-     * Send verification OTP email.
+     * Resend verification OTP.
      */
-    private function sendVerificationOtp(User $user): void
+    public function resendOtp(array $data): void
     {
-        Mail::to($user->email)
-            ->send(new VerifyEmailOtpMail(
-                $user->name,
-                (string) $user->email_verification_otp
-            ));
+        DB::transaction(function () use ($data) {
+
+            $user = $this->getUnverifiedUser($data['email']);
+
+            $this->otpService->ensureCooldown(
+                $user->email
+            );
+
+            $this->otpService->generateAndSend($user);
+        });
+    }
+
+    /**
+     * Get an unverified user by email.
+     */
+    private function getUnverifiedUser(string $email): User
+    {
+        $user = User::where('email', $email)
+            ->firstOrFail();
+
+        if ($user->email_verified_at !== null) {
+            throw new EmailAlreadyVerifiedException();
+        }
+
+        return $user;
     }
 }

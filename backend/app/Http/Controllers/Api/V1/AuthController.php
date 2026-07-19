@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\VerifyEmailRequest;
+use App\Http\Requests\Auth\ResendOtpRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +36,17 @@ class AuthController extends Controller
 
         return $this->successResponse(
             message: 'Email verified successfully.'
+        );
+    }
+
+    public function resendOtp(ResendOtpRequest $request): JsonResponse
+    {
+        $this->authService->resendOtp(
+            $request->validated()
+        );
+
+        return $this->successResponse(
+            message: 'A new verification OTP has been sent to your email.'
         );
     }
 }

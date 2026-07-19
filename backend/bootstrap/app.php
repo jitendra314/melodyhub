@@ -11,6 +11,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use App\Exceptions\EmailAlreadyVerifiedException;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpExpiredException;
+use App\Exceptions\OtpCooldownException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -76,6 +77,23 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => $e->getMessage(),
                 'errors'  => null,
             ], 422);
+        });
+
+        /**
+         * Resend OTP Exception
+         */
+        $exceptions->render(function (
+            OtpCooldownException $e,
+            Request $request
+        ) {
+            if (! $request->expectsJson()) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 429);
         });
 
         /**
