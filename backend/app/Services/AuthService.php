@@ -25,7 +25,7 @@ class AuthService
                 'password' => $data['password'],
             ]);
 
-            $this->otpService->generateAndSend($user);
+            $this->otpService->generateAndSendEmailVerificationOtp($user);
 
             return $user->fresh();
         });
@@ -62,11 +62,11 @@ class AuthService
 
             $user = $this->getUnverifiedUser($data['email']);
 
-            $this->otpService->ensureCooldown(
+            $this->otpService->ensureOtpRequestAllowed(
                 $user->email
             );
 
-            $this->otpService->generateAndSend($user);
+            $this->otpService->generateAndSendEmailVerificationOtp($user);
         });
     }
 

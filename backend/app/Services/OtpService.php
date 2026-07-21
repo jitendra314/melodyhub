@@ -7,7 +7,9 @@ use App\Exceptions\OtpCooldownException;
 use App\Exceptions\OtpExpiredException;
 use App\Mail\VerifyEmailOtpMail;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use App\Exceptions\OtpRateLimitException;
 use Illuminate\Support\Facades\RateLimiter;
 
 class OtpService
@@ -15,22 +17,27 @@ class OtpService
     /**
      * Generate and send email verification OTP.
      */
-    public function generateAndSend(User $user): void
+    public function generateAndSendEmailVerificationOtp(User $user): void
     {
-        $otp = $this->generateOtp();
+        DB::transaction(function () use ($user) {
 
-        $user->update([
-            'email_verification_otp' => $otp,
-            'email_verification_otp_expires_at' => now()->addMinutes(
-                config('auth.email_otp_expiry')
-            ),
-        ]);
+            $otp = $this->generateOtp();
 
-        Mail::to($user->email)
-            ->send(new VerifyEmailOtpMail(
-                $user->name,
-                $otp
-            ));
+            $user->update([
+                'email_verification_otp' => $otp,
+                'email_verification_otp_expires_at' => now()->addMinutes(
+                    config('auth.email_otp_expiry')
+                ),
+            ]);
+
+            Mail::to($user->email)
+                ->send(new VerifyEmailOtpMail(
+                    $user->name,
+                    $otp
+                ));
+        });
+
+        $this->recordOtpRequest($user->email);
     }
 
     /**
@@ -56,22 +63,41 @@ class OtpService
     }
 
     /**
-     * Ensure resend cooldown.
+     * Ensure user can request another OTP.
      */
-    public function ensureCooldown(string $email): void
+    public function ensureOtpRequestAllowed(string $email): void
     {
-        $key = 'otp:' . strtolower($email);
+        $email = strtolower($email);
 
-        if (RateLimiter::tooManyAttempts($key, 1)) {
+        $cooldownKey = "otp-cooldown:{$email}";
+        $attemptKey = "otp-attempts:{$email}";
+
+        /*
+        |--------------------------------------------------------------------------
+        | Cooldown Check (60 Seconds)
+        |--------------------------------------------------------------------------
+        */
+
+        if (RateLimiter::tooManyAttempts($cooldownKey, 1)) {
             throw new OtpCooldownException(
-                RateLimiter::availableIn($key)
+                RateLimiter::availableIn($cooldownKey)
             );
         }
 
-        RateLimiter::hit(
-            $key,
-            config('auth.otp_cooldown')
-        );
+        /*
+        |--------------------------------------------------------------------------
+        | Maximum Attempts Check (3 in 10 Minutes)
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            RateLimiter::tooManyAttempts(
+                $attemptKey,
+                config('auth.otp_max_attempts')
+            )
+        ) {
+            throw new OtpRateLimitException();
+        }
     }
 
     /**
@@ -80,5 +106,23 @@ class OtpService
     private function generateOtp(): string
     {
         return (string) random_int(100000, 999999);
+    }
+
+    /**
+     * Record a successful OTP request.
+     */
+    private function recordOtpRequest(string $email): void
+    {
+        $email = strtolower($email);
+
+        RateLimiter::hit(
+            "otp-cooldown:{$email}",
+            config('auth.otp_cooldown')
+        );
+
+        RateLimiter::hit(
+            "otp-attempts:{$email}",
+            config('auth.otp_decay_minutes') * 60
+        );
     }
 }

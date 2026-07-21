@@ -12,6 +12,7 @@ use App\Exceptions\EmailAlreadyVerifiedException;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpExpiredException;
 use App\Exceptions\OtpCooldownException;
+use App\Exceptions\OtpRateLimitException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -86,13 +87,29 @@ return Application::configure(basePath: dirname(__DIR__))
             OtpCooldownException $e,
             Request $request
         ) {
-            if (! $request->expectsJson()) {
+            if (! $request->is('api/*')) {
                 return null;
             }
 
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
+                'errors'  => null,
+            ], 429);
+        });
+
+        $exceptions->render(function (
+            OtpRateLimitException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors'  => null,
             ], 429);
         });
 
