@@ -42,6 +42,11 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        'api' => [
+            'driver' => 'jwt',
+            'provider' => 'users',
+        ],
     ],
 
     /*
@@ -113,5 +118,13 @@ return [
     */
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+
+    'email_otp_expiry' => (int) env('EMAIL_OTP_EXPIRY', 10),
+
+    'otp_cooldown' => (int) env('OTP_COOLDOWN_SECONDS', 60),
+
+    'otp_max_attempts' => (int) env('OTP_MAX_ATTEMPTS', 3),
+
+    'otp_decay_minutes' => (int) env('OTP_DECAY_MINUTES', 10),
 
 ];

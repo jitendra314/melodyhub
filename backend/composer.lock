@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "50547f3a966b933820aec195bc5a97ac",
+    "content-hash": "d1e1852efe216fff76c925ba1353cfb0",
     "packages": [
         {
             "name": "brick/math",
@@ -2757,35 +2757,35 @@
         },
         {
             "name": "php-open-source-saver/jwt-auth",
-            "version": "v2.8.3",
+            "version": "2.9.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHP-Open-Source-Saver/jwt-auth.git",
-                "reference": "563f7dc025f48b9ecbacc271da509bbb4c6b3b23"
+                "reference": "ce08363a9986e5253efd3663ed4f75c976bec89a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHP-Open-Source-Saver/jwt-auth/zipball/563f7dc025f48b9ecbacc271da509bbb4c6b3b23",
-                "reference": "563f7dc025f48b9ecbacc271da509bbb4c6b3b23",
+                "url": "https://api.github.com/repos/PHP-Open-Source-Saver/jwt-auth/zipball/ce08363a9986e5253efd3663ed4f75c976bec89a",
+                "reference": "ce08363a9986e5253efd3663ed4f75c976bec89a",
                 "shasum": ""
             },
             "require": {
                 "ext-json": "*",
-                "illuminate/auth": "^10|^11|^12",
-                "illuminate/contracts": "^10|^11|^12",
-                "illuminate/http": "^10|^11|^12",
-                "illuminate/support": "^10|^11|^12",
+                "illuminate/auth": "^12|^13",
+                "illuminate/contracts": "^12|^13",
+                "illuminate/http": "^12|^13",
+                "illuminate/support": "^12|^13",
                 "lcobucci/jwt": "^5.4",
                 "namshi/jose": "^7.0",
                 "nesbot/carbon": "^2.0|^3.0",
-                "php": "^8.2"
+                "php": "^8.3"
             },
             "require-dev": {
                 "friendsofphp/php-cs-fixer": "^3",
-                "illuminate/console": "^10|^11|^12",
-                "illuminate/routing": "^10|^11|^12",
+                "illuminate/console": "^12|^13",
+                "illuminate/routing": "^12|^13",
                 "mockery/mockery": "^1.6",
-                "orchestra/testbench": "^8|^9|^10",
+                "orchestra/testbench": "^10|^11",
                 "phpstan/phpstan": "^2",
                 "phpunit/phpunit": "^10.5|^11"
             },
@@ -2799,9 +2799,6 @@
                     "providers": [
                         "PHPOpenSourceSaver\\JWTAuth\\Providers\\LaravelServiceProvider"
                     ]
-                },
-                "branch-alias": {
-                    "dev-develop": "2.0-dev"
                 }
             },
             "autoload": {
@@ -2849,7 +2846,7 @@
                 "issues": "https://github.com/PHP-Open-Source-Saver/jwt-auth/issues",
                 "source": "https://github.com/PHP-Open-Source-Saver/jwt-auth"
             },
-            "time": "2025-10-15T12:02:51+00:00"
+            "time": "2026-05-07T16:44:01+00:00"
         },
         {
             "name": "phpoption/phpoption",
@@ -10289,12 +10286,12 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.2"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.6.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
 }
