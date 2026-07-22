@@ -2,14 +2,16 @@
 
 namespace App\Services;
 
+use App\Enums\OtpType;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpCooldownException;
 use App\Exceptions\OtpExpiredException;
+use App\Exceptions\OtpRateLimitException;
 use App\Mail\VerifyEmailOtpMail;
+use App\Models\Otp;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use App\Exceptions\OtpRateLimitException;
 use Illuminate\Support\Facades\RateLimiter;
 
 class OtpService
@@ -21,14 +23,10 @@ class OtpService
     {
         DB::transaction(function () use ($user) {
 
-            $otp = $this->generateOtp();
-
-            $user->update([
-                'email_verification_otp' => $otp,
-                'email_verification_otp_expires_at' => now()->addMinutes(
-                    config('auth.email_otp_expiry')
-                ),
-            ]);
+            $otp = $this->createOtp(
+                $user,
+                OtpType::EMAIL_VERIFICATION
+            );
 
             Mail::to($user->email)
                 ->send(new VerifyEmailOtpMail(
@@ -43,23 +41,33 @@ class OtpService
     /**
      * Validate OTP.
      */
-    public function validate(User $user, string $otp): void
-    {
-        if (! hash_equals(
-            (string) $user->email_verification_otp,
-            $otp
-        )) {
+    public function validate(
+        User $user,
+        OtpType $type,
+        string $otp
+    ): void {
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', $type->value)
+            ->first();
+
+        if (! $otpRecord) {
             throw new InvalidOtpException();
         }
 
         if (
-            $user->email_verification_otp_expires_at === null ||
-            now()->greaterThan(
-                $user->email_verification_otp_expires_at
-            )
+            $otpRecord->expires_at === null ||
+            now()->greaterThan($otpRecord->expires_at)
         ) {
             throw new OtpExpiredException();
         }
+
+        if (! hash_equals($otpRecord->otp, $otp)) {
+            throw new InvalidOtpException();
+        }
+
+        $otpRecord->update([
+            'verified_at' => now(),
+        ]);
     }
 
     /**
@@ -72,23 +80,11 @@ class OtpService
         $cooldownKey = "otp-cooldown:{$email}";
         $attemptKey = "otp-attempts:{$email}";
 
-        /*
-        |--------------------------------------------------------------------------
-        | Cooldown Check (60 Seconds)
-        |--------------------------------------------------------------------------
-        */
-
         if (RateLimiter::tooManyAttempts($cooldownKey, 1)) {
             throw new OtpCooldownException(
                 RateLimiter::availableIn($cooldownKey)
             );
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Maximum Attempts Check (3 in 10 Minutes)
-        |--------------------------------------------------------------------------
-        */
 
         if (
             RateLimiter::tooManyAttempts(
@@ -98,6 +94,32 @@ class OtpService
         ) {
             throw new OtpRateLimitException();
         }
+    }
+
+    /**
+     * Create or update OTP.
+     */
+    private function createOtp(
+        User $user,
+        OtpType $type
+    ): string {
+        $otp = $this->generateOtp();
+
+        Otp::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'type' => $type->value,
+            ],
+            [
+                'otp' => $otp,
+                'expires_at' => now()->addMinutes(
+                    config('auth.email_otp_expiry')
+                ),
+                'verified_at' => null,
+            ]
+        );
+
+        return $otp;
     }
 
     /**

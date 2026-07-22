@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use App\Exceptions\InvalidCredentialsException;
 use App\Exceptions\EmailNotVerifiedException;
+use App\Enums\OtpType;
 
 class AuthService
 {
@@ -76,13 +77,12 @@ class AuthService
 
             $this->otpService->validate(
                 $user,
+                OtpType::EMAIL_VERIFICATION,
                 $data['otp']
             );
 
             $user->update([
                 'email_verified_at' => now(),
-                'email_verification_otp' => null,
-                'email_verification_otp_expires_at' => null,
             ]);
         });
     }
