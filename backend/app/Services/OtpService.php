@@ -6,7 +6,9 @@ use App\Enums\OtpType;
 use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpCooldownException;
 use App\Exceptions\OtpExpiredException;
+use App\Exceptions\OtpNotVerifiedException;
 use App\Exceptions\OtpRateLimitException;
+use App\Mail\PasswordResetOtpMail;
 use App\Mail\VerifyEmailOtpMail;
 use App\Models\Otp;
 use App\Models\User;
@@ -17,22 +19,24 @@ use Illuminate\Support\Facades\RateLimiter;
 class OtpService
 {
     /**
-     * Generate and send email verification OTP.
+     * Generate and send OTP.
      */
-    public function generateAndSendEmailVerificationOtp(User $user): void
-    {
-        DB::transaction(function () use ($user) {
+    public function generateAndSend(
+        User $user,
+        OtpType $type
+    ): void {
+        DB::transaction(function () use ($user, $type) {
 
             $otp = $this->createOtp(
                 $user,
-                OtpType::EMAIL_VERIFICATION
+                $type
             );
 
-            Mail::to($user->email)
-                ->send(new VerifyEmailOtpMail(
-                    $user->name,
-                    $otp
-                ));
+            $this->sendOtpMail(
+                $user,
+                $type,
+                $otp
+            );
         });
 
         $this->recordOtpRequest($user->email);
@@ -46,13 +50,10 @@ class OtpService
         OtpType $type,
         string $otp
     ): void {
-        $otpRecord = Otp::where('user_id', $user->id)
-            ->where('type', $type->value)
-            ->first();
-
-        if (! $otpRecord) {
-            throw new InvalidOtpException();
-        }
+        $otpRecord = $this->getOtpRecord(
+            $user,
+            $type
+        );
 
         if (
             $otpRecord->expires_at === null ||
@@ -64,10 +65,52 @@ class OtpService
         if (! hash_equals($otpRecord->otp, $otp)) {
             throw new InvalidOtpException();
         }
+    }
+
+    /**
+     * Mark OTP as verified.
+     */
+    public function markVerified(
+        User $user,
+        OtpType $type
+    ): void {
+        $otpRecord = $this->getOtpRecord(
+            $user,
+            $type
+        );
 
         $otpRecord->update([
             'verified_at' => now(),
         ]);
+    }
+
+    /**
+     * Ensure OTP has been verified.
+     */
+    public function ensureVerified(
+        User $user,
+        OtpType $type
+    ): void {
+        $otpRecord = $this->getOtpRecord(
+            $user,
+            $type
+        );
+
+        if ($otpRecord->verified_at === null) {
+            throw new OtpNotVerifiedException();
+        }
+    }
+
+    /**
+     * Delete OTP.
+     */
+    public function delete(
+        User $user,
+        OtpType $type
+    ): void {
+        Otp::where('user_id', $user->id)
+            ->where('type', $type->value)
+            ->delete();
     }
 
     /**
@@ -80,11 +123,23 @@ class OtpService
         $cooldownKey = "otp-cooldown:{$email}";
         $attemptKey = "otp-attempts:{$email}";
 
+        /*
+        |--------------------------------------------------------------------------
+        | Cooldown Check
+        |--------------------------------------------------------------------------
+        */
+
         if (RateLimiter::tooManyAttempts($cooldownKey, 1)) {
             throw new OtpCooldownException(
                 RateLimiter::availableIn($cooldownKey)
             );
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Maximum Attempts Check
+        |--------------------------------------------------------------------------
+        */
 
         if (
             RateLimiter::tooManyAttempts(
@@ -123,18 +178,76 @@ class OtpService
     }
 
     /**
+     * Get OTP record.
+     */
+    private function getOtpRecord(
+        User $user,
+        OtpType $type
+    ): Otp {
+        $otpRecord = Otp::where('user_id', $user->id)
+            ->where('type', $type->value)
+            ->first();
+
+        if (! $otpRecord) {
+            throw new InvalidOtpException();
+        }
+
+        return $otpRecord;
+    }
+
+    /**
+     * Send OTP email.
+     */
+    private function sendOtpMail(
+        User $user,
+        OtpType $type,
+        string $otp
+    ): void {
+        switch ($type) {
+
+            case OtpType::EMAIL_VERIFICATION:
+
+                Mail::to($user->email)
+                    ->send(
+                        new VerifyEmailOtpMail(
+                            $user->name,
+                            $otp
+                        )
+                    );
+
+                break;
+
+            case OtpType::PASSWORD_RESET:
+
+                Mail::to($user->email)
+                    ->send(
+                        new PasswordResetOtpMail(
+                            $user->name,
+                            $otp
+                        )
+                    );
+
+                break;
+        }
+    }
+
+    /**
      * Generate a 6-digit OTP.
      */
     private function generateOtp(): string
     {
-        return (string) random_int(100000, 999999);
+        return (string) random_int(
+            100000,
+            999999
+        );
     }
 
     /**
-     * Record a successful OTP request.
+     * Record OTP request.
      */
-    private function recordOtpRequest(string $email): void
-    {
+    private function recordOtpRequest(
+        string $email
+    ): void {
         $email = strtolower($email);
 
         RateLimiter::hit(

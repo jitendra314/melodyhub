@@ -15,6 +15,7 @@ use App\Exceptions\OtpCooldownException;
 use App\Exceptions\OtpRateLimitException;
 use App\Exceptions\InvalidCredentialsException;
 use App\Exceptions\EmailNotVerifiedException;
+use App\Exceptions\OtpNotVerifiedException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -68,6 +69,20 @@ return Application::configure(basePath: dirname(__DIR__))
                 'success' => false,
                 'message' => $e->getMessage(),
                 'errors'  => null,
+            ], 422);
+        });
+
+        $exceptions->render(function (
+            OtpNotVerifiedException $e,
+            Request $request
+        ) {
+            if (! $request->expectsJson()) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
             ], 422);
         });
 

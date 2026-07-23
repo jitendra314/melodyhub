@@ -6,6 +6,9 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResendOtpRequest;
 use App\Http\Requests\Auth\VerifyEmailRequest;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\VerifyResetOtpRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
@@ -74,6 +77,48 @@ class AuthController extends Controller
 
         return $this->successResponse(
             message: 'A new verification OTP has been sent to your email.'
+        );
+    }
+
+    /**
+     * Send password reset OTP.
+     */
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+
+        $this->authService->forgotPassword(
+            $request->validated()
+        );
+
+        return $this->successResponse(
+            message: 'Password reset OTP sent successfully.'
+        );
+    }
+
+    public function verifyResetOtp(VerifyResetOtpRequest $request): JsonResponse
+    {
+
+        $this->authService->verifyResetOtp(
+            $request->validated()
+        );
+
+        return $this->successResponse(
+            message: 'OTP verified successfully.'
+        );
+    }
+
+    /**
+     * Reset user password.
+     */
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+
+        $this->authService->resetPassword(
+            $request->validated()
+        );
+
+        return $this->successResponse(
+            message: 'Password reset successfully.'
         );
     }
 
