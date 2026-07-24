@@ -13,6 +13,9 @@ use App\Exceptions\InvalidOtpException;
 use App\Exceptions\OtpExpiredException;
 use App\Exceptions\OtpCooldownException;
 use App\Exceptions\OtpRateLimitException;
+use App\Exceptions\InvalidCredentialsException;
+use App\Exceptions\EmailNotVerifiedException;
+use App\Exceptions\OtpNotVerifiedException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,7 +25,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->redirectGuestsTo(function (Request $request) {
+
+            if ($request->is('api/*')) {
+                return null;
+            }
+
+            return route('login');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
 
@@ -59,6 +69,20 @@ return Application::configure(basePath: dirname(__DIR__))
                 'success' => false,
                 'message' => $e->getMessage(),
                 'errors'  => null,
+            ], 422);
+        });
+
+        $exceptions->render(function (
+            OtpNotVerifiedException $e,
+            Request $request
+        ) {
+            if (! $request->expectsJson()) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
             ], 422);
         });
 
@@ -147,6 +171,42 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => 'Authentication required.',
                 'errors'  => null,
             ], 401);
+        });
+
+        /**
+         * Invalid Credentials Exception
+         */
+        $exceptions->render(function (
+            InvalidCredentialsException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors'  => null,
+            ], 401);
+        });
+
+        /**
+         * Email Not Verified Exception
+         */
+        $exceptions->render(function (
+            EmailNotVerifiedException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors'  => null,
+            ], 403);
         });
 
         /**

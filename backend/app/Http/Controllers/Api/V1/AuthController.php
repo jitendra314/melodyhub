@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
-use App\Http\Requests\Auth\VerifyEmailRequest;
 use App\Http\Requests\Auth\ResendOtpRequest;
+use App\Http\Requests\Auth\VerifyEmailRequest;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\VerifyResetOtpRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +19,9 @@ class AuthController extends Controller
         private readonly AuthService $authService
     ) {}
 
+    /**
+     * Register a new user.
+     */
     public function register(RegisterRequest $request): JsonResponse
     {
         $user = $this->authService->register(
@@ -28,6 +35,26 @@ class AuthController extends Controller
         );
     }
 
+    /**
+     * Login user.
+     */
+    public function login(LoginRequest $request): JsonResponse
+    {
+        $data = $this->authService->login(
+            $request->validated()
+        );
+
+        $data['user'] = new UserResource($data['user']);
+
+        return $this->successResponse(
+            data: $data,
+            message: 'Login successful.'
+        );
+    }
+
+    /**
+     * Verify user's email.
+     */
     public function verifyEmail(VerifyEmailRequest $request): JsonResponse
     {
         $this->authService->verifyEmail(
@@ -39,6 +66,9 @@ class AuthController extends Controller
         );
     }
 
+    /**
+     * Resend verification OTP.
+     */
     public function resendOtp(ResendOtpRequest $request): JsonResponse
     {
         $this->authService->resendOtp(
@@ -47,6 +77,86 @@ class AuthController extends Controller
 
         return $this->successResponse(
             message: 'A new verification OTP has been sent to your email.'
+        );
+    }
+
+    /**
+     * Send password reset OTP.
+     */
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+
+        $this->authService->forgotPassword(
+            $request->validated()
+        );
+
+        return $this->successResponse(
+            message: 'Password reset OTP sent successfully.'
+        );
+    }
+
+    public function verifyResetOtp(VerifyResetOtpRequest $request): JsonResponse
+    {
+
+        $this->authService->verifyResetOtp(
+            $request->validated()
+        );
+
+        return $this->successResponse(
+            message: 'OTP verified successfully.'
+        );
+    }
+
+    /**
+     * Reset user password.
+     */
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    {
+
+        $this->authService->resetPassword(
+            $request->validated()
+        );
+
+        return $this->successResponse(
+            message: 'Password reset successfully.'
+        );
+    }
+
+    /**
+     * Get authenticated user.
+     */
+    public function me(): JsonResponse
+    {
+        $user = $this->authService->me();
+
+        return $this->successResponse(
+            data: new UserResource($user),
+            message: 'Authenticated user fetched successfully.'
+        );
+    }
+
+    /**
+     * Refresh JWT token.
+     */
+    public function refresh(): JsonResponse
+    {
+        $data = $this->authService->refresh();
+
+        return $this->successResponse(
+            data: $data,
+            message: 'Token refreshed successfully.'
+        );
+    }
+
+    /**
+     * Logout user.
+     */
+    public function logout(): JsonResponse
+    {
+        $this->authService->logout();
+
+        return $this->successResponse(
+            message: 'Logged out successfully.'
         );
     }
 }
