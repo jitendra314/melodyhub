@@ -7,6 +7,8 @@ use App\Services\ProfileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Http\Requests\Profile\UpdateProfileRequest;
+use App\Http\Requests\Profile\UpdateAvatarRequest;
+use App\Http\Requests\Profile\ChangePasswordRequest;
 
 class ProfileController extends Controller
 {
@@ -41,6 +43,56 @@ class ProfileController extends Controller
         return $this->successResponse(
             data: new ProfileResource($user),
             message: 'Profile updated successfully.'
+        );
+    }
+
+    /**
+     * Update authenticated user's avatar.
+     */
+    public function updateAvatar(
+        UpdateAvatarRequest $request
+    ): JsonResponse {
+
+        $user = $this->profileService->updateAvatar(
+            $request->user(),
+            $request->file('avatar')
+        );
+
+        return $this->successResponse(
+            data: new ProfileResource($user),
+            message: 'Avatar updated successfully.'
+        );
+    }
+
+    /**
+     * Remove authenticated user's avatar.
+     */
+    public function deleteAvatar(): JsonResponse
+    {
+        $user = $this->profileService->deleteAvatar(
+            auth()->user()
+        );
+
+        return $this->successResponse(
+            data: new ProfileResource($user),
+            message: 'Avatar removed successfully.'
+        );
+    }
+
+    /**
+     * Change authenticated user's password.
+     */
+    public function changePassword(
+        ChangePasswordRequest $request
+    ): JsonResponse {
+
+        $this->profileService->changePassword(
+            $request->user(),
+            $request->validated()
+        );
+
+        return $this->successResponse(
+            message: 'Password changed successfully.'
         );
     }
 }

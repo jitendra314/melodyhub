@@ -16,6 +16,7 @@ use App\Exceptions\OtpRateLimitException;
 use App\Exceptions\InvalidCredentialsException;
 use App\Exceptions\EmailNotVerifiedException;
 use App\Exceptions\OtpNotVerifiedException;
+use App\Exceptions\InvalidCurrentPasswordException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -189,6 +190,24 @@ return Application::configure(basePath: dirname(__DIR__))
                 'message' => $e->getMessage(),
                 'errors'  => null,
             ], 401);
+        });
+
+        /**
+         * Invalid Current Password Exception
+         */
+        $exceptions->render(function (
+            InvalidCurrentPasswordException $e,
+            Request $request
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors'  => null,
+            ], 422);
         });
 
         /**

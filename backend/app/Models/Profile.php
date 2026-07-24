@@ -12,7 +12,7 @@ class Profile extends Model
         'user_id',
         'username',
         'bio',
-        'avatar',
+        'avatar_public_id',
         'date_of_birth',
         'gender',
     ];

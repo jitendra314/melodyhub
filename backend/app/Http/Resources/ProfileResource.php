@@ -26,7 +26,11 @@ class ProfileResource extends JsonResource
 
                 'bio' => $this->profile?->bio,
 
-                'avatar' => $this->profile?->avatar,
+                'avatar' => $this->profile?->avatar_public_id
+                                    ? cloudinary()
+                                        ->image($this->profile->avatar_public_id)
+                                        ->toUrl()
+                                    : null,
 
                 'date_of_birth' => $this->profile?->date_of_birth,
 
