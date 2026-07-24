@@ -9,7 +9,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\Otp;
+use App\Models\Profile;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -66,5 +68,13 @@ class User extends Authenticatable implements JWTSubject
     public function otps(): HasMany
     {
         return $this->hasMany(Otp::class);
+    }
+
+    /**
+     * Get the user's profile.
+     */
+    public function profile(): HasOne
+    {
+        return $this->hasOne(Profile::class);
     }
 }

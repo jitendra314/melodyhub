@@ -30,6 +30,8 @@ class AuthService
                 'password' => $data['password'],
             ]);
 
+            $user->profile()->create();
+
             $this->otpService->generateAndSend(
                 $user,
                 OtpType::EMAIL_VERIFICATION
