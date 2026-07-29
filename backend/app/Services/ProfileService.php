@@ -45,42 +45,75 @@ class ProfileService
 
         $profile = $user->profile;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Delete Existing Avatar
-        |--------------------------------------------------------------------------
-        */
+        $newUpload = null;
 
-        if ($profile->avatar_public_id) {
+        $oldPublicId = $profile->avatar_public_id;
 
-            $this->mediaService->deleteImage(
-                $profile->avatar_public_id
-            );
+        try {
+
+            DB::transaction(function () use (
+                $profile,
+                $avatar,
+                $user,
+                &$newUpload,
+                $oldPublicId
+            ) {
+
+                /*
+                |--------------------------------------------------------------------------
+                | Upload New Avatar
+                |--------------------------------------------------------------------------
+                */
+
+                $newUpload = $this->mediaService->uploadImage(
+                    file: $avatar,
+                    folder: 'avatars',
+                    publicId: 'user_'.$user->id.'/profile'
+                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Save New Avatar
+                |--------------------------------------------------------------------------
+                */
+
+                $profile->update([
+                    'avatar_public_id' => $newUpload['public_id'],
+                ]);
+
+                /*
+                |--------------------------------------------------------------------------
+                | Delete Old Avatar
+                |--------------------------------------------------------------------------
+                */
+
+                if ($oldPublicId) {
+
+                    $this->mediaService->deleteImage(
+                        $oldPublicId
+                    );
+                }
+            });
+
+            return $user->fresh()->load('profile');
+
+        } catch (\Throwable $e) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Delete Newly Uploaded Avatar
+            |--------------------------------------------------------------------------
+            */
+
+            if ($newUpload) {
+
+                $this->mediaService->deleteImage(
+                    $newUpload['public_id']
+                );
+            }
+
+            throw $e;
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Upload New Avatar
-        |--------------------------------------------------------------------------
-        */
-
-        $upload = $this->mediaService->uploadImage(
-            file: $avatar,
-            folder: 'avatars',
-            publicId: 'user_'.$user->id.'/profile'
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Save Public ID
-        |--------------------------------------------------------------------------
-        */
-
-        $profile->update([
-            'avatar_public_id' => $upload['public_id'],
-        ]);
-
-        return $user->fresh()->load('profile');
     }
 
     /**
