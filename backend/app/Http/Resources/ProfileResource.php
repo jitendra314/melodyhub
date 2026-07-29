@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Services\MediaUrlService;
 
 class ProfileResource extends JsonResource
 {
@@ -26,11 +27,8 @@ class ProfileResource extends JsonResource
 
                 'bio' => $this->profile?->bio,
 
-                'avatar' => $this->profile?->avatar_public_id
-                                    ? cloudinary()
-                                        ->image($this->profile->avatar_public_id)
-                                        ->toUrl()
-                                    : null,
+                'avatar' => app(MediaUrlService::class)
+                            ->image($this->profile?->avatar_public_id),
 
                 'date_of_birth' => $this->profile?->date_of_birth,
 
